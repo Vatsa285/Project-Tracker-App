@@ -31,6 +31,14 @@ fun LoginScreen(
         )
     }
 
+    if (uiState.successMessage != null) {
+        ErrorDialog(
+            title = "Success",
+            message = uiState.successMessage!!,
+            onDismiss = { viewModel.clearSuccessMessage() }
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (uiState.isLoading) {
             LoadingIndicator()

@@ -84,10 +84,10 @@ class AuthViewModel @Inject constructor(
             _uiState.update { it.copy(error = "Please enter your email") }
             return
         }
-        _uiState.update { it.copy(isLoading = true, error = null) }
+        _uiState.update { it.copy(isLoading = true, error = null, successMessage = null) }
         viewModelScope.launch {
             authRepository.resetPassword(email).onSuccess {
-                _uiState.update { it.copy(isLoading = false, error = "Reset link sent to your email") }
+                _uiState.update { it.copy(isLoading = false, successMessage = "Reset link sent") }
             }.onFailure { e ->
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to send reset link") }
             }
@@ -97,9 +97,14 @@ class AuthViewModel @Inject constructor(
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
+
+    fun clearSuccessMessage() {
+        _uiState.update { it.copy(successMessage = null) }
+    }
 }
 
 data class AuthUiState(
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val successMessage: String? = null
 )

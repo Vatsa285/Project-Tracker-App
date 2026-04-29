@@ -7,13 +7,14 @@ import androidx.compose.runtime.Composable
 
 @Composable
 fun ErrorDialog(
+    title: String = "Error",
     message: String,
     onDismiss: () -> Unit,
     onRetry: (() -> Unit)? = null
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Error") },
+        title = { Text(text = title) },
         text = { Text(text = message) },
         confirmButton = {
             if (onRetry != null) {

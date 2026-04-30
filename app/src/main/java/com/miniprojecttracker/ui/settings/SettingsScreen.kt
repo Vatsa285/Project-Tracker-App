@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
@@ -97,7 +98,70 @@ fun SettingsScreen(
                 leadingContent = { Icon(Icons.Default.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                 modifier = Modifier.clickable { showLogoutDialog = true }
             )
+
+            Divider()
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            var showResetPasswordDialog by remember { mutableStateOf(false) }
+            ListItem(
+                headlineContent = { Text("Update Password") },
+                supportingContent = { Text("Securely change your account password") },
+                leadingContent = { Icon(Icons.Default.Lock, contentDescription = null) },
+                modifier = Modifier.clickable { showResetPasswordDialog = true }
+            )
+
+            if (showResetPasswordDialog) {
+                var currentPassword by remember { mutableStateOf("") }
+                var newPassword by remember { mutableStateOf("") }
+
+                AlertDialog(
+                    onDismissRequest = { showResetPasswordDialog = false },
+                    title = { Text("Update Password") },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = currentPassword,
+                                onValueChange = { currentPassword = it },
+                                label = { Text("Current Password") },
+                                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = newPassword,
+                                onValueChange = { newPassword = it },
+                                label = { Text("New Password") },
+                                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                viewModel.updatePassword(currentPassword, newPassword)
+                                showResetPasswordDialog = false
+                            }
+                        ) {
+                            Text("Update")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showResetPasswordDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
         }
+    }
+
+    if (uiState.error != null || uiState.successMessage != null) {
+        com.miniprojecttracker.ui.components.ErrorDialog(
+            title = if (uiState.error != null) "Error" else "Success",
+            message = uiState.error ?: uiState.successMessage!!,
+            onDismiss = { viewModel.clearMessages() }
+        )
     }
 
     if (showLogoutDialog) {

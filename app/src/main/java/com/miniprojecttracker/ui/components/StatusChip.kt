@@ -38,6 +38,13 @@ fun StatusChip(
                  ProjectStatus.ON_HOLD -> status.displayName to Color.Gray
              }
         }
+        is com.miniprojecttracker.domain.model.UserRole -> {
+            when (status) {
+                com.miniprojecttracker.domain.model.UserRole.MANAGER -> "Manager" to Color(0xFF6200EE)
+                com.miniprojecttracker.domain.model.UserRole.TEAM_LEADER -> "Team Leader" to Color(0xFF03DAC5)
+                com.miniprojecttracker.domain.model.UserRole.DEVELOPER -> "Developer" to Color(0xFF3700B3)
+            }
+        }
         else -> "Unknown" to Color.Gray
     }
 

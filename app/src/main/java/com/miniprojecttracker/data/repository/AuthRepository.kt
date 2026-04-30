@@ -82,6 +82,23 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    suspend fun updatePassword(currentPassword: String, newPassword: String): Result<Unit> {
+        return try {
+            val user = auth.currentUser ?: throw Exception("Not logged in")
+            val email = user.email ?: throw Exception("User email not found")
+            
+            // Re-authenticate
+            val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(email, currentPassword)
+            user.reauthenticate(credential).await()
+            
+            // Update password
+            user.updatePassword(newPassword).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     fun signOut() {
         auth.signOut()
     }

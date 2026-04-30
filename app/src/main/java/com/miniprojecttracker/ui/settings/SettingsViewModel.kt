@@ -54,11 +54,31 @@ class SettingsViewModel @Inject constructor(
              onSuccess()
         }
     }
+
+    fun updatePassword(current: String, new: String) {
+        if (current.isBlank() || new.isBlank()) {
+            _uiState.update { it.copy(error = "Fields cannot be empty") }
+            return
+        }
+        _uiState.update { it.copy(isLoading = true, error = null, successMessage = null) }
+        viewModelScope.launch {
+            authRepository.updatePassword(current, new).onSuccess {
+                _uiState.update { it.copy(isLoading = false, successMessage = "Password updated successfully") }
+            }.onFailure { e ->
+                _uiState.update { it.copy(isLoading = false, error = e.message ?: "Update failed") }
+            }
+        }
+    }
+
+    fun clearMessages() {
+        _uiState.update { it.copy(error = null, successMessage = null) }
+    }
 }
 
 data class SettingsUiState(
     val isLoading: Boolean = true,
     val currentUser: User? = null,
     val isDarkMode: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val successMessage: String? = null
 )

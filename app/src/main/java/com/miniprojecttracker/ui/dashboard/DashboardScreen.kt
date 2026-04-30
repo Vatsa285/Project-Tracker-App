@@ -86,7 +86,7 @@ fun DashboardScreen(
                             .padding(16.dp)
                     ) {
                         item {
-                            WelcomeSection(userName = user.name, role = user.role.name)
+                            WelcomeSection(userName = user.name, role = user.role)
                             Spacer(modifier = Modifier.height(24.dp))
                         }
 
@@ -132,7 +132,7 @@ fun DashboardScreen(
 }
 
 @Composable
-fun WelcomeSection(userName: String, role: String) {
+fun WelcomeSection(userName: String, role: com.miniprojecttracker.domain.model.UserRole) {
     Column {
         Text(
             text = "Welcome back,",
@@ -145,7 +145,7 @@ fun WelcomeSection(userName: String, role: String) {
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(4.dp))
-        StatusChip(status = role) // Abuse StatusChip for role badge for now
+        StatusChip(status = role)
     }
 }
 

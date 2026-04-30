@@ -9,9 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -109,7 +107,8 @@ fun DashboardScreen(
                                         onProjectClick = onNavigateToProject,
                                         onCalendarClick = onNavigateToCalendar,
                                         onTeamsClick = onNavigateToTeams,
-                                        onNavigateToProjects = onNavigateToProjects
+                                        onNavigateToProjects = onNavigateToProjects,
+                                        onTeamSelected = { viewModel.selectTeam(it) }
                                     )
                                 }
                             }
@@ -234,15 +233,56 @@ fun ManagerDashboard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeamLeaderDashboard(
     uiState: DashboardUiState,
     onProjectClick: (String) -> Unit,
     onCalendarClick: () -> Unit,
     onTeamsClick: () -> Unit,
-    onNavigateToProjects: (String?, Boolean) -> Unit
+    onNavigateToProjects: (String?, Boolean) -> Unit,
+    onTeamSelected: (String) -> Unit
 ) {
+    var expanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val selectedTeamName = uiState.teams.find { it.id == uiState.selectedTeamId }?.name ?: "Select Team"
+
     Column {
+        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            OutlinedCard(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = "Current Team", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        Text(text = selectedTeamName, style = MaterialTheme.typography.titleMedium)
+                    }
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                }
+            }
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.fillMaxWidth(0.9f)
+            ) {
+                uiState.teams.forEach { team ->
+                    DropdownMenuItem(
+                        text = { Text(team.name) },
+                        onClick = {
+                            onTeamSelected(team.id)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+
         Text(
             text = "Team Leader Dashboard",
             style = MaterialTheme.typography.titleLarge,

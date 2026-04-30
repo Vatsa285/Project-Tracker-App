@@ -105,49 +105,44 @@ class DashboardViewModel @Inject constructor(
 
     private fun loadTeamLeaderData(userId: String) {
         viewModelScope.launch {
-            // Team Leader should see projects for their assigned team
-            val teamId = _uiState.value.currentUser?.teamId ?: ""
-            
-            val teamLeaderTeamsFlow = teamRepository.getAllTeams().map { teams ->
+            teamRepository.getAllTeams().map { teams ->
                 teams.filter { it.leaderId == userId }
-            }
-
-            if (teamId.isNotEmpty()) {
-                combine(
-                    teamRepository.getTeamById(teamId),
-                    projectRepository.getProjectsByTeam(teamId),
-                    teamLeaderTeamsFlow
-                ) { team, projects, managedTeams ->
-                    val activeProjects = projects.filter { it.status == ProjectStatus.ACTIVE || it.status == ProjectStatus.PLANNING }
-                    val upcomingProjects = projects.filter { it.status == ProjectStatus.NOT_STARTED }
-                    val completedProjects = projects.filter { it.status == ProjectStatus.COMPLETED }
-                    
-                    _uiState.update { 
-                        it.copy(
-                            isLoading = false,
-                            teams = managedTeams,
-                            totalManagedTeams = managedTeams.size,
-                            projects = projects,
-                            activeProjects = activeProjects,
-                            upcomingProjects = upcomingProjects,
-                            activeProjectsCount = activeProjects.size,
-                            completedProjectsCount = completedProjects.size,
-                            upcomingProjectsCount = upcomingProjects.size
-                        ) 
-                    }
-                }.collect()
-            } else {
-                teamLeaderTeamsFlow.collectLatest { managedTeams ->
-                    _uiState.update { 
-                        it.copy(
-                            isLoading = false, 
-                            teams = managedTeams, 
-                            totalManagedTeams = managedTeams.size,
-                            projects = emptyList()
-                        ) 
-                    }
+            }.collectLatest { managedTeams ->
+                _uiState.update { it.copy(teams = managedTeams, totalManagedTeams = managedTeams.size) }
+                
+                if (managedTeams.isNotEmpty()) {
+                    val initialTeamId = _uiState.value.selectedTeamId.ifBlank { managedTeams.first().id }
+                    selectTeam(initialTeamId)
+                } else {
+                    _uiState.update { it.copy(isLoading = false, projects = emptyList()) }
                 }
             }
+        }
+    }
+
+    fun selectTeam(teamId: String) {
+        _uiState.update { it.copy(selectedTeamId = teamId, isLoading = true) }
+        viewModelScope.launch {
+            combine(
+                teamRepository.getTeamById(teamId),
+                projectRepository.getProjectsByTeam(teamId)
+            ) { team, projects ->
+                val activeProjects = projects.filter { it.status == ProjectStatus.ACTIVE || it.status == ProjectStatus.PLANNING }
+                val upcomingProjects = projects.filter { it.status == ProjectStatus.NOT_STARTED }
+                val completedProjects = projects.filter { it.status == ProjectStatus.COMPLETED }
+                
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        projects = projects,
+                        activeProjects = activeProjects,
+                        upcomingProjects = upcomingProjects,
+                        activeProjectsCount = activeProjects.size,
+                        completedProjectsCount = completedProjects.size,
+                        upcomingProjectsCount = upcomingProjects.size
+                    ) 
+                }
+            }.collect()
         }
     }
 
@@ -178,6 +173,7 @@ data class DashboardUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val currentUser: User? = null,
+    val selectedTeamId: String = "",
     
     // Manager Data (formerly SUPER_MANAGER)
     val totalTeams: Int = 0,

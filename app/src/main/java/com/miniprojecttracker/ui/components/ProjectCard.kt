@@ -65,13 +65,13 @@ fun ProjectCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 PriorityBadge(priority = project.priority)
-                
+
                 Text(
                     text = "Deadline: ${DateUtils.formatDate(project.deadline)}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (DateUtils.isOverdue(project.deadline) && project.status != com.miniprojecttracker.domain.model.ProjectStatus.COMPLETED) 
-                                MaterialTheme.colorScheme.error 
-                            else 
+                    color = if (DateUtils.isOverdue(project.deadline) && project.status != com.miniprojecttracker.domain.model.ProjectStatus.COMPLETED)
+                                MaterialTheme.colorScheme.error
+                            else
                                 MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

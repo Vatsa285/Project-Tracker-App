@@ -42,7 +42,12 @@ class UserRepository @Inject constructor(
     }
 
     suspend fun addPoints(userId: String, points: Int) {
-        firestoreDataSource.addPointsToUser(userId, points)
+        try {
+            firestoreDataSource.addPointsToUser(userId, points)
+        } catch (e: Exception) {
+            // Log error but continue with local update for responsiveness
+            e.printStackTrace()
+        }
         userDao.addPoints(userId, points)
     }
 

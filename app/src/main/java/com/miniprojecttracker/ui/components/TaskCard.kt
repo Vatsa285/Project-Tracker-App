@@ -61,11 +61,11 @@ fun TaskCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 StatusChip(status = task.status)
-                
+
                 Text(
                     text = "Due: ${DateUtils.formatShort(task.dueDate)}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (DateUtils.isOverdue(task.dueDate) && task.status != com.miniprojecttracker.domain.model.TaskStatus.DONE) 
+                    color = if (DateUtils.isOverdue(task.dueDate) && task.status != com.miniprojecttracker.domain.model.TaskStatus.DONE)
                                 MaterialTheme.colorScheme.error 
                             else 
                                 MaterialTheme.colorScheme.onSurfaceVariant

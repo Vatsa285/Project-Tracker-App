@@ -55,12 +55,12 @@ fun DashboardScreen(
             )
         },
         floatingActionButton = {
-            // Manager role (formerly SUPER_MANAGER) no longer has 'add' option on home page as per requirement
-        if (uiState.currentUser?.role == UserRole.MANAGER) {
-            FloatingActionButton(onClick = onNavigateToCreateProject) {
-                Icon(Icons.Default.Add, contentDescription = "Create Project")
+            // Only Managers can create projects
+            if (uiState.currentUser?.role == UserRole.MANAGER) {
+                FloatingActionButton(onClick = onNavigateToCreateProject) {
+                    Icon(Icons.Default.Add, contentDescription = "Create Project")
+                }
             }
-        }
         }
     ) { paddingValues ->
         Box(
@@ -84,7 +84,11 @@ fun DashboardScreen(
                             .padding(16.dp)
                     ) {
                         item {
-                            WelcomeSection(userName = user.name, role = user.role)
+                            WelcomeSection(
+                                userName = user.name,
+                                role = user.role,
+                                points = user.points
+                            )
                             Spacer(modifier = Modifier.height(24.dp))
                         }
 
@@ -131,20 +135,55 @@ fun DashboardScreen(
 }
 
 @Composable
-fun WelcomeSection(userName: String, role: com.miniprojecttracker.domain.model.UserRole) {
-    Column {
-        Text(
-            text = "Welcome back,",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = userName,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        StatusChip(status = role)
+fun WelcomeSection(
+    userName: String,
+    role: com.miniprojecttracker.domain.model.UserRole,
+    points: Int
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = "Welcome back,",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = userName,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            StatusChip(status = role)
+        }
+
+        if (role == com.miniprojecttracker.domain.model.UserRole.DEVELOPER) {
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = "Points",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "$points pts",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -180,9 +219,9 @@ fun ManagerDashboard(
                 modifier = Modifier.weight(1f).clickable { onProjectsClick("Active", false) }
             )
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -357,7 +396,7 @@ fun TeamLeaderDashboard(
             )
         }
         
-        /* 
+        /*
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
@@ -405,9 +444,9 @@ fun DeveloperDashboard(
                 valueColor = SuccessGreen
             )
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)

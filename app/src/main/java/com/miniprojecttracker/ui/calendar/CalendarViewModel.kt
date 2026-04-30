@@ -32,9 +32,11 @@ class CalendarViewModel @Inject constructor(
     private fun checkUserRoleAndSetDefaultView() {
         viewModelScope.launch {
             authRepository.getCurrentUserFlow().filterNotNull().collect { user ->
-                if (user.role == com.miniprojecttracker.domain.model.UserRole.MANAGER) {
-                    _uiState.update { it.copy(viewType = CalendarViewType.PROJECTS) }
+                val defaultView = when (user.role) {
+                    com.miniprojecttracker.domain.model.UserRole.MANAGER -> CalendarViewType.PROJECTS
+                    else -> CalendarViewType.TASKS
                 }
+                _uiState.update { it.copy(viewType = defaultView, userRole = user.role) }
             }
         }
     }

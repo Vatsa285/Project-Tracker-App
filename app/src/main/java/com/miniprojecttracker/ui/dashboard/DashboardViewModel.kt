@@ -80,7 +80,9 @@ class DashboardViewModel @Inject constructor(
                 userRepository.getAllUsers()
             ) { teams, projects, users ->
                 val projectStatusCounts = projects.groupingBy { it.status.name }.eachCount()
-                val activeProjects = projects.filter { it.status == ProjectStatus.ACTIVE }
+                val activeProjects = projects.filter { 
+                    it.status != ProjectStatus.COMPLETED && it.status != ProjectStatus.NOT_STARTED 
+                }
                 val upcomingProjects = projects.filter { it.status == ProjectStatus.NOT_STARTED }
                 val completedProjectsCount = projects.count { it.status == ProjectStatus.COMPLETED }
                 _uiState.update { 
@@ -127,7 +129,9 @@ class DashboardViewModel @Inject constructor(
                 teamRepository.getTeamById(teamId),
                 projectRepository.getProjectsByTeam(teamId)
             ) { team, projects ->
-                val activeProjects = projects.filter { it.status == ProjectStatus.ACTIVE || it.status == ProjectStatus.PLANNING }
+                val activeProjects = projects.filter { 
+                    it.status != ProjectStatus.COMPLETED && it.status != ProjectStatus.NOT_STARTED 
+                }
                 val upcomingProjects = projects.filter { it.status == ProjectStatus.NOT_STARTED }
                 val completedProjects = projects.filter { it.status == ProjectStatus.COMPLETED }
                 

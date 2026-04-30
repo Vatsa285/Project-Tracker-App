@@ -1,9 +1,13 @@
 package com.miniprojecttracker.ui.dashboard
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Refresh
@@ -12,7 +16,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.miniprojecttracker.domain.model.Project
@@ -78,52 +86,63 @@ fun DashboardScreen(
                 )
             } else {
                 uiState.currentUser?.let { user ->
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp)
+                    AnimatedVisibility(
+                        visible = !uiState.isLoading,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
                     ) {
-                        item {
-                            WelcomeSection(
-                                userName = user.name,
-                                role = user.role,
-                                points = user.points
-                            )
-                            Spacer(modifier = Modifier.height(24.dp))
-                        }
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                        ) {
+                            item {
+                                WelcomeSection(
+                                    userName = user.name,
+                                    role = user.role,
+                                    points = user.points
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+                            }
 
-                        when (user.role) {
-                            UserRole.MANAGER -> {
-                                item { 
-                                    ManagerDashboard(
-                                        uiState = uiState,
-                                        onTeamsClick = onNavigateToTeams,
-                                        onProjectsClick = onNavigateToProjects,
-                                        onAnalyticsClick = onNavigateToAnalytics,
-                                        onCalendarClick = onNavigateToCalendar
-                                    )
-                                }
-                            }
-                            UserRole.TEAM_LEADER -> {
-                                item { 
-                                    TeamLeaderDashboard(
-                                        uiState = uiState,
-                                        onProjectClick = onNavigateToProject,
-                                        onCalendarClick = onNavigateToCalendar,
-                                        onTeamsClick = onNavigateToTeams,
-                                        onNavigateToProjects = onNavigateToProjects,
-                                        onTeamSelected = { viewModel.selectTeam(it) }
-                                    )
-                                }
-                            }
-                            UserRole.DEVELOPER -> {
-                                item { 
-                                    DeveloperDashboard(
-                                        uiState = uiState,
-                                        onLeaderboardClick = onNavigateToLeaderboard,
-                                        onTaskClick = onNavigateToTask,
-                                        onTaskListClick = onNavigateToTaskList
-                                    ) 
+                            item {
+                                AnimatedContent(
+                                    targetState = user.role,
+                                    transitionSpec = {
+                                        fadeIn(animationSpec = tween(500)) togetherWith 
+                                        fadeOut(animationSpec = tween(500))
+                                    },
+                                    label = "dashboard_content"
+                                ) { role ->
+                                    when (role) {
+                                        UserRole.MANAGER -> {
+                                            ManagerDashboard(
+                                                uiState = uiState,
+                                                onTeamsClick = onNavigateToTeams,
+                                                onProjectsClick = onNavigateToProjects,
+                                                onAnalyticsClick = onNavigateToAnalytics,
+                                                onCalendarClick = onNavigateToCalendar
+                                            )
+                                        }
+                                        UserRole.TEAM_LEADER -> {
+                                            TeamLeaderDashboard(
+                                                uiState = uiState,
+                                                onProjectClick = onNavigateToProject,
+                                                onCalendarClick = onNavigateToCalendar,
+                                                onTeamsClick = onNavigateToTeams,
+                                                onNavigateToProjects = onNavigateToProjects,
+                                                onTeamSelected = { viewModel.selectTeam(it) }
+                                            )
+                                        }
+                                        UserRole.DEVELOPER -> {
+                                            DeveloperDashboard(
+                                                uiState = uiState,
+                                                onLeaderboardClick = onNavigateToLeaderboard,
+                                                onTaskClick = onNavigateToTask,
+                                                onTaskListClick = onNavigateToTaskList
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -396,7 +415,6 @@ fun TeamLeaderDashboard(
             )
         }
         
-        /*
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
@@ -409,12 +427,19 @@ fun TeamLeaderDashboard(
         if (uiState.projects.isEmpty()) {
             Text("No projects assigned.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
-            uiState.projects.take(3).forEach { project ->
-                ProjectCard(project = project, onClick = { onProjectClick(project.id) })
-                Spacer(modifier = Modifier.height(8.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val recentProjects = uiState.projects.take(3)
+                recentProjects.forEachIndexed { index, project ->
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(animationSpec = tween(300, delayMillis = index * 100)) +
+                                slideInVertically(animationSpec = tween(300, delayMillis = index * 100)) { it / 2 }
+                    ) {
+                        ProjectCard(project = project, onClick = { onProjectClick(project.id) })
+                    }
+                }
             }
         }
-        */
     }
 }
 
@@ -480,8 +505,15 @@ fun DeveloperDashboard(
             Text("No tasks assigned to you.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
              Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                uiState.tasks.take(5).forEach { task ->
-                    TaskCard(task = task, onClick = { onTaskClick(task.id) })
+                val recentTasks = uiState.tasks.take(5)
+                recentTasks.forEachIndexed { index, task ->
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(animationSpec = tween(300, delayMillis = index * 100)) +
+                                slideInVertically(animationSpec = tween(300, delayMillis = index * 100)) { it / 2 }
+                    ) {
+                        TaskCard(task = task, onClick = { onTaskClick(task.id) })
+                    }
                 }
             }
         }
@@ -494,11 +526,16 @@ fun DashboardStatCard(
     value: String,
     icon: ImageVector,
     modifier: Modifier = Modifier,
-    valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
+    valueColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
     Card(
-        modifier = modifier.height(100.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        modifier = modifier
+            .height(110.dp)
+            .clip(MaterialTheme.shapes.large),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
@@ -513,21 +550,45 @@ fun DashboardStatCard(
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
                 )
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            
+            val isNumeric = value.toIntOrNull() != null
+            if (isNumeric) {
+                AnimatedCounter(
+                    count = value.toInt(),
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        color = valueColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            } else {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = valueColor,
+                    fontWeight = FontWeight.Bold
                 )
             }
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineMedium,
-                color = valueColor
-            )
         }
     }
 }

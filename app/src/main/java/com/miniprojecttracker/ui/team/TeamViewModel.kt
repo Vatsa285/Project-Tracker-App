@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.miniprojecttracker.data.repository.AuthRepository
 import com.miniprojecttracker.data.repository.TeamRepository
 import com.miniprojecttracker.data.repository.UserRepository
+import com.miniprojecttracker.data.repository.TaskRepository
 import com.miniprojecttracker.domain.model.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -15,7 +16,8 @@ import javax.inject.Inject
 class TeamViewModel @Inject constructor(
     private val teamRepository: TeamRepository,
     private val userRepository: UserRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val taskRepository: TaskRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TeamUiState())
@@ -106,6 +108,20 @@ class TeamViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
+                val oldTeam = _uiState.value.currentTeam
+                val removedMemberIds = oldTeam?.memberIds?.filter { !team.memberIds.contains(it) } ?: emptyList()
+
+                // Check if removed members have pending tasks
+                for (memberId in removedMemberIds) {
+                    val tasks = taskRepository.getTasksByUser(memberId).first()
+                    val hasPendingTasks = tasks.any { it.status != TaskStatus.DONE }
+                    if (hasPendingTasks) {
+                        val memberName = userRepository.getUserById(memberId).firstOrNull()?.name ?: "Member"
+                        _uiState.update { it.copy(isLoading = false, error = "Cannot remove $memberName: they have incomplete tasks.") }
+                        return@launch
+                    }
+                }
+
                 val savedTeamId = if (team.id.isBlank()) {
                     val newTeam = teamRepository.createTeam(team)
                     userRepository.updateUserTeam(newTeam.leaderId, newTeam.id)
@@ -116,9 +132,14 @@ class TeamViewModel @Inject constructor(
                     team.id
                 }
 
-                // Update all members' teamId
+                // Update all current members' teamId
                 team.memberIds.forEach { memberId ->
                     userRepository.updateUserTeam(memberId, savedTeamId)
+                }
+
+                // Reset teamId for removed members
+                removedMemberIds.forEach { memberId ->
+                    userRepository.updateUserTeam(memberId, "")
                 }
                 
                 _uiState.update { it.copy(isLoading = false) }

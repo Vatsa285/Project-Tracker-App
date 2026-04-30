@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.miniprojecttracker.data.repository.CommentRepository
 import com.miniprojecttracker.data.repository.ProjectRepository
 import com.miniprojecttracker.data.repository.TaskRepository
+import com.miniprojecttracker.data.repository.TeamRepository
 import com.miniprojecttracker.data.repository.UserRepository
 import com.miniprojecttracker.data.repository.AuthRepository
 import com.miniprojecttracker.domain.model.*
@@ -18,6 +19,7 @@ import javax.inject.Inject
 class TaskViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val projectRepository: ProjectRepository,
+    private val teamRepository: TeamRepository,
     private val userRepository: UserRepository,
     private val commentRepository: CommentRepository,
     private val authRepository: AuthRepository
@@ -123,8 +125,11 @@ class TaskViewModel @Inject constructor(
         viewModelScope.launch {
             val project = projectRepository.getProjectById(projectId).firstOrNull()
             if (project != null) {
+                val team = teamRepository.getTeamById(project.teamId).firstOrNull()
                 userRepository.getUsersByTeam(project.teamId).collectLatest { users ->
-                     _uiState.update { it.copy(availableUsers = users) }
+                     // Filter out the team leader - tasks cannot be assigned to them
+                     val filteredUsers = users.filter { it.id != team?.leaderId }
+                     _uiState.update { it.copy(availableUsers = filteredUsers) }
                 }
             }
         }

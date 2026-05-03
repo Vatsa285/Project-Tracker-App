@@ -179,12 +179,7 @@ class TaskViewModel @Inject constructor(
                  
                  // Gamification: Add points if task is completed
                  if (status == TaskStatus.DONE && task.status != TaskStatus.DONE) {
-                     val userId = task.assignedTo
-                     var points = Constants.POINTS_TASK_COMPLETED
-                     if (task.dueDate >= System.currentTimeMillis()) {
-                         points += Constants.POINTS_TASK_ON_TIME
-                     }
-                     userRepository.addPoints(userId, points)
+                     awardTaskCompletionPoints(task)
                  }
              }
          }
@@ -270,11 +265,51 @@ class TaskViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 taskRepository.reviewUpdateRequest(taskId, approved, comment)
+                
+                // Gamification: Award points when task review is approved (task becomes DONE)
+                if (approved) {
+                    val task = taskRepository.getTaskById(taskId).firstOrNull()
+                    if (task != null) {
+                        awardTaskCompletionPoints(task)
+                        projectRepository.recalculateProgress(task.projectId)
+                    }
+                }
+                
                 _uiState.update { it.copy(isLoading = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to review update") }
             }
         }
+    }
+
+    /**
+     * Calculates and awards points to the developer who completed a task.
+     * Points are based on:
+     * - Base completion points (10)
+     * - Task priority multiplier (1x LOW, 1.5x MEDIUM, 2x HIGH, 3x CRITICAL)
+     * - Project priority bonus (0/5/10/20 for LOW/MEDIUM/HIGH/CRITICAL)
+     * - On-time bonus (+5 if completed before due date)
+     */
+    private suspend fun awardTaskCompletionPoints(task: Task) {
+        val userId = task.assignedTo
+        if (userId.isBlank()) return
+
+        // Base points scaled by task priority
+        val basePoints = (Constants.POINTS_TASK_COMPLETED * Constants.getTaskPriorityMultiplier(task.priority)).toInt()
+
+        // On-time bonus
+        val onTimeBonus = if (task.dueDate > 0 && task.dueDate >= System.currentTimeMillis()) {
+            Constants.POINTS_TASK_ON_TIME
+        } else 0
+
+        // Project priority bonus
+        val project = projectRepository.getProjectById(task.projectId).firstOrNull()
+        val projectBonus = if (project != null) {
+            Constants.getProjectPriorityBonus(project.priority)
+        } else 0
+
+        val totalPoints = basePoints + onTimeBonus + projectBonus
+        userRepository.addPoints(userId, totalPoints)
     }
 }
 

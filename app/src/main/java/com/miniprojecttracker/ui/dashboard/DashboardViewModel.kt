@@ -33,6 +33,9 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
+            val currentUser = authRepository.getCurrentUserFlow().filterNotNull().first()
+            _uiState.update { it.copy(currentUser = currentUser) }
+
             // Sync with Firebase in parallel
             viewModelScope.launch {
                 try {
@@ -41,32 +44,24 @@ class DashboardViewModel @Inject constructor(
             }
             viewModelScope.launch {
                 try {
-                    teamRepository.syncTeams()
+                    teamRepository.syncTeams(currentUser.id, currentUser.role)
                 } catch (_: Exception) {}
             }
             viewModelScope.launch {
                 try {
-                    projectRepository.syncProjects()
+                    projectRepository.syncProjects(currentUser.id, currentUser.role)
                 } catch (_: Exception) {}
             }
             viewModelScope.launch {
                 try {
-                    taskRepository.syncTasks()
+                    taskRepository.syncTasks(currentUser.id, currentUser.role)
                 } catch (_: Exception) {}
             }
 
-            authRepository.getCurrentUserFlow().collectLatest { user ->
-                if (user != null) {
-                    _uiState.update { it.copy(currentUser = user) }
-                    
-                    when (user.role) {
-                        UserRole.MANAGER -> loadManagerData()
-                        UserRole.TEAM_LEADER -> loadTeamLeaderData(user.id)
-                        UserRole.DEVELOPER -> loadDeveloperData(user.id)
-                    }
-                } else {
-                     _uiState.update { it.copy(isLoading = false, error = "User not found") }
-                }
+            when (currentUser.role) {
+                UserRole.MANAGER -> loadManagerData()
+                UserRole.TEAM_LEADER -> loadTeamLeaderData(currentUser.id)
+                UserRole.DEVELOPER -> loadDeveloperData(currentUser.id)
             }
         }
     }
@@ -105,12 +100,24 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    private var selectTeamJob: kotlinx.coroutines.Job? = null
+
     private fun loadTeamLeaderData(userId: String) {
         viewModelScope.launch {
-            teamRepository.getAllTeams().map { teams ->
-                teams.filter { it.leaderId == userId }
-            }.collectLatest { managedTeams ->
-                _uiState.update { it.copy(teams = managedTeams, totalManagedTeams = managedTeams.size) }
+            // First, load all projects across all led teams for accurate total counts
+            combine(
+                teamRepository.getAllTeams().map { teams -> teams.filter { it.leaderId == userId } },
+                projectRepository.getAllProjects()
+            ) { managedTeams, allProjects ->
+                val teamIds = managedTeams.map { it.id }.toSet()
+                val teamProjects = allProjects.filter { it.teamId in teamIds }
+                managedTeams to teamProjects
+            }.collectLatest { (managedTeams, allTeamProjects) ->
+                _uiState.update { it.copy(
+                    teams = managedTeams, 
+                    totalManagedTeams = managedTeams.size,
+                    totalProjects = allTeamProjects.size
+                ) }
                 
                 if (managedTeams.isNotEmpty()) {
                     val initialTeamId = _uiState.value.selectedTeamId.ifBlank { managedTeams.first().id }
@@ -124,7 +131,9 @@ class DashboardViewModel @Inject constructor(
 
     fun selectTeam(teamId: String) {
         _uiState.update { it.copy(selectedTeamId = teamId, isLoading = true) }
-        viewModelScope.launch {
+        // Cancel any previous team-selection collector to avoid duplicates
+        selectTeamJob?.cancel()
+        selectTeamJob = viewModelScope.launch {
             combine(
                 teamRepository.getTeamById(teamId),
                 projectRepository.getProjectsByTeam(teamId)

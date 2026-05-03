@@ -170,7 +170,7 @@ fun CreateEditTaskScreen(
                             expanded = priorityExpanded,
                             onDismissRequest = { priorityExpanded = false }
                         ) {
-                            Priority.values().forEach { priority ->
+                            Priority.entries.forEach { priority ->
                                 DropdownMenuItem(
                                     text = { Text(text = priority.displayName) },
                                     onClick = {

@@ -4,6 +4,7 @@ import com.miniprojecttracker.data.local.dao.TeamDao
 import com.miniprojecttracker.data.local.entity.TeamEntity
 import com.miniprojecttracker.data.remote.FirestoreDataSource
 import com.miniprojecttracker.domain.model.Team
+import com.miniprojecttracker.domain.model.UserRole
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -42,11 +43,14 @@ class TeamRepository @Inject constructor(
         teamDao.deleteTeam(TeamEntity.fromDomain(team))
     }
 
-    suspend fun syncTeams() {
+    suspend fun syncTeams(userId: String, role: UserRole) {
         try {
-            // Get current user to filter if necessary, but syncing all for now
-            // To isolate data, we should only sync what belongs to the user
-            val teams = firestoreDataSource.observeTeams().first()
+            val teamsFlow = when (role) {
+                UserRole.MANAGER -> firestoreDataSource.observeTeams(userId)
+                UserRole.TEAM_LEADER -> firestoreDataSource.observeTeamsByLeader(userId)
+                UserRole.DEVELOPER -> firestoreDataSource.observeTeamsByMember(userId)
+            }
+            val teams = teamsFlow.first()
             teamDao.insertTeams(teams.map { TeamEntity.fromDomain(it) })
         } catch (_: Exception) {}
     }

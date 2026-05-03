@@ -26,8 +26,9 @@ class ProjectViewModel @Inject constructor(
 
     init {
         loadCurrentUser()
-        loadProjects()
     }
+
+    private var loadProjectsJob: kotlinx.coroutines.Job? = null
 
     private fun loadCurrentUser() {
         viewModelScope.launch {
@@ -37,21 +38,33 @@ class ProjectViewModel @Inject constructor(
         }
     }
 
-    fun loadProjects() {
-        viewModelScope.launch {
+    fun loadProjects(teamId: String? = null) {
+        loadProjectsJob?.cancel()
+        loadProjectsJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+            
+            val currentUser = authRepository.getCurrentUserFlow().filterNotNull().first()
             
             // Sync before loading
             try {
-                projectRepository.syncProjects()
+                projectRepository.syncProjects(currentUser.id, currentUser.role)
             } catch (_: Exception) {}
 
-            val currentUser = authRepository.getCurrentUserFlow().firstOrNull()
-            
-            val projectsFlow = when (currentUser?.role) {
-                UserRole.MANAGER -> projectRepository.getProjectsByManager(currentUser.id)
-                UserRole.TEAM_LEADER -> projectRepository.getProjectsByTeam(currentUser.teamId)
-                UserRole.DEVELOPER -> projectRepository.getProjectsByTeam(currentUser.teamId)
+            val projectsFlow = when {
+                teamId != null -> projectRepository.getProjectsByTeam(teamId)
+                currentUser.role == UserRole.MANAGER -> projectRepository.getProjectsByManager(currentUser.id)
+                currentUser.role == UserRole.TEAM_LEADER -> {
+                    // Team leader sees projects from ALL teams they lead
+                    combine(
+                        teamRepository.getAllTeams(),
+                        projectRepository.getAllProjects()
+                    ) { teams, projects ->
+                        val teamIds = teams.filter { it.leaderId == currentUser.id }.map { it.id }.toSet()
+                        projects.filter { it.teamId in teamIds }
+                    }
+                }
+                currentUser.role == UserRole.DEVELOPER -> 
+                    projectRepository.getProjectsByTeam(currentUser.teamId)
                 else -> projectRepository.getAllProjects()
             }
 
@@ -130,6 +143,21 @@ class ProjectViewModel @Inject constructor(
                 selectedStatusFilter = newFilter,
                 filteredProjects = filterProjects(it.projects, it.searchQuery, newFilter)
             ) 
+        }
+    }
+
+    /**
+     * Applies a filter without toggling. Used by navigation to set
+     * the initial filter without risk of toggling it off on re-entry.
+     */
+    fun applyInitialFilter(status: String) {
+        if (_uiState.value.selectedStatusFilter != status) {
+            _uiState.update { 
+                it.copy(
+                    selectedStatusFilter = status,
+                    filteredProjects = filterProjects(it.projects, it.searchQuery, status)
+                ) 
+            }
         }
     }
 
@@ -298,5 +326,5 @@ data class ProjectUiState(
     val selectedStatusFilter: String = "All",
     val currentSection: String = "TASKS",
     val availableTeams: List<Team> = emptyList(),
-    val filters: List<String> = listOf("All") + ProjectStatus.values().map { it.displayName }
+    val filters: List<String> = listOf("All") + ProjectStatus.entries.map { it.displayName }
 )

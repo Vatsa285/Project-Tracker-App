@@ -39,37 +39,33 @@ class TeamViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
+            val currentUser = authRepository.getCurrentUserFlow().filterNotNull().first()
+
             // Sync before loading
             try {
-                teamRepository.syncTeams()
+                teamRepository.syncTeams(currentUser.id, currentUser.role)
             } catch (_: Exception) {}
 
-            authRepository.getCurrentUserFlow().collectLatest { currentUser ->
-                if (currentUser != null) {
-                    val teamsFlow = when (currentUser.role) {
-                        UserRole.MANAGER -> teamRepository.getTeamsByManager(currentUser.id)
-                        UserRole.TEAM_LEADER -> teamRepository.getAllTeams().map { teams ->
-                            teams.filter { it.leaderId == currentUser.id }
-                        }
-                        UserRole.DEVELOPER -> teamRepository.getAllTeams().map { teams ->
-                            teams.filter { it.memberIds.contains(currentUser.id) }
-                        }
-                    }
-
-                    teamsFlow.collectLatest { teams ->
-                        // Hide memberIds for other team leaders or developers if not in that team
-                        // Actually, filtering them out of the list is handled above.
-                        // But if we want to hide member details for "other" teams:
-                        val filteredTeams = teams.map { team ->
-                            if (currentUser.role == UserRole.TEAM_LEADER && team.leaderId != currentUser.id) {
-                                team.copy(memberIds = emptyList())
-                            } else team
-                        }
-                        _uiState.update { it.copy(isLoading = false, teams = filteredTeams) }
-                    }
-                } else {
-                    _uiState.update { it.copy(isLoading = false) }
+            val teamsFlow = when (currentUser.role) {
+                UserRole.MANAGER -> teamRepository.getTeamsByManager(currentUser.id)
+                UserRole.TEAM_LEADER -> teamRepository.getAllTeams().map { teams ->
+                    teams.filter { it.leaderId == currentUser.id }
                 }
+                UserRole.DEVELOPER -> teamRepository.getAllTeams().map { teams ->
+                    teams.filter { it.memberIds.contains(currentUser.id) }
+                }
+            }
+
+            teamsFlow.collectLatest { teams ->
+                // Hide memberIds for other team leaders or developers if not in that team
+                // Actually, filtering them out of the list is handled above.
+                // But if we want to hide member details for "other" teams:
+                val filteredTeams = teams.map { team ->
+                    if (currentUser.role == UserRole.TEAM_LEADER && team.leaderId != currentUser.id) {
+                        team.copy(memberIds = emptyList())
+                    } else team
+                }
+                _uiState.update { it.copy(isLoading = false, teams = filteredTeams) }
             }
         }
     }

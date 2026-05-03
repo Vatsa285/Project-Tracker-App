@@ -21,12 +21,17 @@ import com.miniprojecttracker.ui.components.*
 fun ProjectListScreen(
     initialFilter: String = "All",
     showFilters: Boolean = true,
+    teamId: String? = null,
     onNavigateToProject: (String) -> Unit,
     onNavigateToCreateProject: () -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: ProjectViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(teamId) {
+        viewModel.loadProjects(teamId)
+    }
 
     Scaffold(
         topBar = {
@@ -55,7 +60,7 @@ fun ProjectListScreen(
         ) {
             LaunchedEffect(initialFilter) {
                 if (initialFilter != "All") {
-                    viewModel.setStatusFilter(initialFilter)
+                    viewModel.applyInitialFilter(initialFilter)
                 }
             }
 

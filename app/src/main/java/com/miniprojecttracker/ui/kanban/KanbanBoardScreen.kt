@@ -95,7 +95,7 @@ fun KanbanBoardScreen(
                 // Simplified status movement logic for demo
                 // In a real app, this would be a proper BottomSheet or drag-drop implementation
                 Column {
-                   TaskStatus.values().forEach { status ->
+                   TaskStatus.entries.forEach { status ->
                        TextButton(
                            onClick = {
                                viewModel.updateTaskStatus(selectedTaskId!!, status)

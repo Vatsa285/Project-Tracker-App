@@ -33,7 +33,7 @@ import com.miniprojecttracker.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    onNavigateToProjects: (String?, Boolean) -> Unit,
+    onNavigateToProjects: (String?, Boolean, String?) -> Unit,
     onNavigateToProject: (String) -> Unit,
     onNavigateToTeams: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
@@ -210,7 +210,7 @@ fun WelcomeSection(
 fun ManagerDashboard(
     uiState: DashboardUiState,
     onTeamsClick: () -> Unit,
-    onProjectsClick: (String?, Boolean) -> Unit,
+    onProjectsClick: (String?, Boolean, String?) -> Unit,
     onAnalyticsClick: () -> Unit,
     onCalendarClick: () -> Unit
 ) {
@@ -235,7 +235,7 @@ fun ManagerDashboard(
                 title = "Active Projects",
                 value = uiState.activeProjectsCount.toString(),
                 icon = Icons.Default.Assignment,
-                modifier = Modifier.weight(1f).clickable { onProjectsClick("Active", false) }
+                modifier = Modifier.weight(1f).clickable { onProjectsClick("Active", false, null) }
             )
         }
 
@@ -249,7 +249,7 @@ fun ManagerDashboard(
                 title = "Upcoming Projects",
                 value = uiState.upcomingProjectsCount.toString(),
                 icon = Icons.Default.AccessTime,
-                modifier = Modifier.weight(1f).clickable { onProjectsClick("Not Started", false) },
+                modifier = Modifier.weight(1f).clickable { onProjectsClick("Not Started", false, null) },
                 valueColor = MaterialTheme.colorScheme.primary
             )
             DashboardStatCard(
@@ -284,7 +284,7 @@ fun ManagerDashboard(
                 title = "All Projects",
                 value = "List",
                 icon = Icons.AutoMirrored.Filled.FormatListBulleted,
-                modifier = Modifier.weight(1f).clickable { onProjectsClick("All", true) },
+                modifier = Modifier.weight(1f).clickable { onProjectsClick("All", true, null) },
                 valueColor = MaterialTheme.colorScheme.primary
             )
         }
@@ -298,7 +298,7 @@ fun TeamLeaderDashboard(
     onProjectClick: (String) -> Unit,
     onCalendarClick: () -> Unit,
     onTeamsClick: () -> Unit,
-    onNavigateToProjects: (String?, Boolean) -> Unit,
+    onNavigateToProjects: (String?, Boolean, String?) -> Unit,
     onTeamSelected: (String) -> Unit
 ) {
     var expanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -356,13 +356,17 @@ fun TeamLeaderDashboard(
                 title = "Active Projects",
                 value = uiState.activeProjectsCount.toString(),
                 icon = Icons.Default.Assignment,
-                modifier = Modifier.weight(1f).clickable { onNavigateToProjects("Active", false) }
+                modifier = Modifier.weight(1f).clickable { 
+                    onNavigateToProjects("Active", false, uiState.selectedTeamId) 
+                }
             )
             DashboardStatCard(
                 title = "Completed",
                 value = uiState.completedProjectsCount.toString(),
                 icon = Icons.Default.CheckCircle,
-                modifier = Modifier.weight(1f).clickable { onNavigateToProjects("Completed", false) },
+                modifier = Modifier.weight(1f).clickable { 
+                    onNavigateToProjects("Completed", false, uiState.selectedTeamId) 
+                },
                 valueColor = SuccessGreen
             )
         }
@@ -377,7 +381,9 @@ fun TeamLeaderDashboard(
                 title = "New Projects",
                 value = uiState.upcomingProjectsCount.toString(),
                 icon = Icons.Default.FiberNew,
-                modifier = Modifier.weight(1f).clickable { onNavigateToProjects("Not Started", false) }
+                modifier = Modifier.weight(1f).clickable { 
+                    onNavigateToProjects("Not Started", false, uiState.selectedTeamId) 
+                }
             )
             DashboardStatCard(
                 title = "Teams Managed",
@@ -410,35 +416,11 @@ fun TeamLeaderDashboard(
                 title = "All Projects",
                 value = "List",
                 icon = Icons.AutoMirrored.Filled.FormatListBulleted,
-                modifier = Modifier.weight(1f).clickable { onNavigateToProjects("All", true) },
+                modifier = Modifier.weight(1f).clickable { 
+                    onNavigateToProjects("All", true, uiState.selectedTeamId) 
+                },
                 valueColor = MaterialTheme.colorScheme.primary
             )
-        }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        Text(
-            text = "Recent Projects",
-            style = MaterialTheme.typography.titleLarge
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        if (uiState.projects.isEmpty()) {
-            Text("No projects assigned.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                val recentProjects = uiState.projects.take(3)
-                recentProjects.forEachIndexed { index, project ->
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(animationSpec = tween(300, delayMillis = index * 100)) +
-                                slideInVertically(animationSpec = tween(300, delayMillis = index * 100)) { it / 2 }
-                    ) {
-                        ProjectCard(project = project, onClick = { onProjectClick(project.id) })
-                    }
-                }
-            }
         }
     }
 }

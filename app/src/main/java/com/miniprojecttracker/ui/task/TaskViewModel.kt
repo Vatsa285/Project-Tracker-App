@@ -61,47 +61,49 @@ class TaskViewModel @Inject constructor(
         }
     }
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     fun loadTasksByProject(projectId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            taskRepository.syncTasks()
+            val currentUser = authRepository.getCurrentUserFlow().filterNotNull().first()
+            taskRepository.syncTasks(currentUser.id, currentUser.role)
             taskRepository.getTasksByProject(projectId).collectLatest { tasks ->
                 _uiState.update { it.copy(tasks = tasks, isLoading = false) }
             }
         }
     }
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     fun loadTasks(projectId: String? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
+            val currentUser = authRepository.getCurrentUserFlow().filterNotNull().first()
+            
             // Sync tasks from Firestore
-            taskRepository.syncTasks()
-
-            val currentUser = authRepository.getCurrentUserFlow().firstOrNull()
+            taskRepository.syncTasks(currentUser.id, currentUser.role)
 
             val tasksFlow = when {
                 projectId != null -> taskRepository.getTasksByProject(projectId)
-                currentUser?.role == UserRole.DEVELOPER -> taskRepository.getTasksByUser(currentUser.id)
-                currentUser?.role == UserRole.TEAM_LEADER -> {
-                    // Team leader sees tasks for all projects assigned to their team
-                    // We need to fetch projects for that team first
-                    projectRepository.getProjectsByTeam(currentUser.teamId).flatMapLatest { projects ->
-                        val projectIds = projects.map { it.id }
-                        taskRepository.getAllTasks().map { tasks ->
-                            tasks.filter { it.projectId in projectIds }
-                        }
+                currentUser.role == UserRole.DEVELOPER -> taskRepository.getTasksByUser(currentUser.id)
+                currentUser.role == UserRole.TEAM_LEADER -> {
+                    // Team leader sees tasks for all projects assigned to ALL their teams
+                    combine(
+                        teamRepository.getAllTeams(),
+                        projectRepository.getAllProjects(),
+                        taskRepository.getAllTasks()
+                    ) { teams, projects, tasks ->
+                        val teamIds = teams.filter { it.leaderId == currentUser.id }.map { it.id }.toSet()
+                        val projectIds = projects.filter { it.teamId in teamIds }.map { it.id }.toSet()
+                        tasks.filter { it.projectId in projectIds }
                     }
                 }
-                currentUser?.role == UserRole.MANAGER -> {
+                currentUser.role == UserRole.MANAGER -> {
                     // Manager sees tasks for all projects they manage
-                    projectRepository.getProjectsByManager(currentUser.id).flatMapLatest { projects ->
-                        val projectIds = projects.map { it.id }
-                        taskRepository.getAllTasks().map { tasks ->
-                            tasks.filter { it.projectId in projectIds }
-                        }
+                    combine(
+                        projectRepository.getProjectsByManager(currentUser.id),
+                        taskRepository.getAllTasks()
+                    ) { projects, tasks ->
+                        val projectIds = projects.map { it.id }.toSet()
+                        tasks.filter { it.projectId in projectIds }
                     }
                 }
                 else -> taskRepository.getAllTasks()

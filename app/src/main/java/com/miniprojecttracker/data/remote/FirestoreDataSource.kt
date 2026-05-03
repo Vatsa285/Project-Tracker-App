@@ -109,6 +109,28 @@ class FirestoreDataSource @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    fun observeTeamsByLeader(leaderId: String): Flow<List<Team>> = callbackFlow {
+        val listener = firestore.collection(TEAMS)
+            .whereEqualTo("leaderId", leaderId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { close(error); return@addSnapshotListener }
+                val teams = snapshot?.documents?.mapNotNull { it.toTeam() } ?: emptyList()
+                trySend(teams)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    fun observeTeamsByMember(memberId: String): Flow<List<Team>> = callbackFlow {
+        val listener = firestore.collection(TEAMS)
+            .whereArrayContains("memberIds", memberId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { close(error); return@addSnapshotListener }
+                val teams = snapshot?.documents?.mapNotNull { it.toTeam() } ?: emptyList()
+                trySend(teams)
+            }
+        awaitClose { listener.remove() }
+    }
+
     // ==================== PROJECTS ====================
 
     suspend fun createProject(project: Project) {
@@ -231,6 +253,7 @@ class FirestoreDataSource @Inject constructor(
         "documentUrl" to documentUrl, "updateRequestStatus" to updateRequestStatus.name,
         "submissionComment" to submissionComment,
         "reviewComment" to reviewComment,
+        "previousStatusBeforeHold" to previousStatusBeforeHold?.name,
         "statusHistory" to statusHistory.map { it.toMap() }
     )
 
@@ -312,6 +335,7 @@ class FirestoreDataSource @Inject constructor(
                 updateRequestStatus = try { com.miniprojecttracker.domain.model.UpdateRequestStatus.valueOf(getString("updateRequestStatus") ?: "NONE") } catch (e: Exception) { com.miniprojecttracker.domain.model.UpdateRequestStatus.NONE },
                 submissionComment = getString("submissionComment") ?: "",
                 reviewComment = getString("reviewComment") ?: "",
+                previousStatusBeforeHold = getString("previousStatusBeforeHold")?.let { try { ProjectStatus.valueOf(it) } catch (e: Exception) { null } },
                 statusHistory = history.mapNotNull { it.toProjectStatusUpdate() }
             )
         } catch (e: Exception) { null }

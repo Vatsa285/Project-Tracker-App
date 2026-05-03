@@ -8,9 +8,9 @@ sealed class Screen(val route: String) {
     data object Login : Screen("login")
     data object Signup : Screen("signup")
     data object Dashboard : Screen("dashboard")
-    data object ProjectList : Screen("projects?filter={filter}&showFilters={showFilters}") {
-        fun createRoute(filter: String? = null, showFilters: Boolean = true) =
-            "projects?filter=${filter ?: "All"}&showFilters=$showFilters"
+    data object ProjectList : Screen("projects?filter={filter}&showFilters={showFilters}&teamId={teamId}") {
+        fun createRoute(filter: String? = null, showFilters: Boolean = true, teamId: String? = null) =
+            "projects?filter=${filter ?: "All"}&showFilters=$showFilters${if (teamId != null) "&teamId=$teamId" else ""}"
     }
     data object ProjectDetail : Screen("project/{projectId}") {
         fun createRoute(projectId: String) = "project/$projectId"

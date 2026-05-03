@@ -110,7 +110,7 @@ fun SignupScreen(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
                     ) {
-                        UserRole.values().forEach { role ->
+                        UserRole.entries.forEach { role ->
                             DropdownMenuItem(
                                 text = { Text(text = role.name) },
                                 onClick = {

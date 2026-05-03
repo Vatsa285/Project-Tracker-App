@@ -1,29 +1,36 @@
 package com.miniprojecttracker.util
 
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Date formatting utilities used across the app.
+ * Uses java.time (thread-safe) since minSdk is 26.
  */
 object DateUtils {
-    private val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    private val dateTimeFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
-    private val shortFormat = SimpleDateFormat("dd MMM", Locale.getDefault())
+    private val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy", Locale.getDefault())
+    private val dateTimeFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm", Locale.getDefault())
+    private val shortFormatter = DateTimeFormatter.ofPattern("dd MMM", Locale.getDefault())
 
     fun formatDate(timestamp: Long): String {
         if (timestamp == 0L) return "No date"
-        return dateFormat.format(Date(timestamp))
+        val instant = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault())
+        return dateFormatter.format(instant)
     }
 
     fun formatDateTime(timestamp: Long): String {
         if (timestamp == 0L) return "No date"
-        return dateTimeFormat.format(Date(timestamp))
+        val instant = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault())
+        return dateTimeFormatter.format(instant)
     }
 
     fun formatShort(timestamp: Long): String {
         if (timestamp == 0L) return ""
-        return shortFormat.format(Date(timestamp))
+        val instant = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault())
+        return shortFormatter.format(instant)
     }
 
     fun isOverdue(deadline: Long): Boolean {

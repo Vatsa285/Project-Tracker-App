@@ -1,11 +1,13 @@
 package com.miniprojecttracker.ui.auth
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -23,6 +25,12 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsState()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var emailError by remember { mutableStateOf(false) }
+
+    val glowElevation by animateDpAsState(
+        targetValue = if (emailError) 4.dp else 0.dp,
+        label = "glowElevation"
+    )
 
     if (uiState.error != null) {
         ErrorDialog(
@@ -60,11 +68,25 @@ fun LoginScreen(
 
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = { 
+                        email = it
+                        emailError = false
+                    },
                     label = { Text("Email") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            elevation = glowElevation,
+                            shape = OutlinedTextFieldDefaults.shape,
+                            spotColor = MaterialTheme.colorScheme.error,
+                            ambientColor = MaterialTheme.colorScheme.error
+                        ),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-                    singleLine = true
+                    singleLine = true,
+                    isError = emailError,
+                    supportingText = if (emailError) {
+                        { Text("Please enter your email to reset password") }
+                    } else null
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -95,7 +117,7 @@ fun LoginScreen(
                     if (email.isNotBlank()) {
                         viewModel.resetPassword(email)
                     } else {
-                        // show some error or toast
+                        emailError = true
                     }
                 }) {
                     Text("Forgot Password?")

@@ -5,6 +5,7 @@ import com.miniprojecttracker.data.local.entity.TaskEntity
 import com.miniprojecttracker.data.remote.FirestoreDataSource
 import com.miniprojecttracker.domain.model.Task
 import com.miniprojecttracker.domain.model.TaskStatus
+import com.miniprojecttracker.domain.model.UserRole
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -113,9 +114,21 @@ class TaskRepository @Inject constructor(
     suspend fun getTotalTaskCount(userId: String): Int =
         taskDao.getTotalTaskCountByUser(userId)
 
-    suspend fun syncTasks() {
+    suspend fun syncTasks(userId: String, role: UserRole) {
         try {
-            val tasks = firestoreDataSource.observeTasks().first()
+            val tasksFlow = when (role) {
+                UserRole.MANAGER -> firestoreDataSource.observeTasks() // Managers see all tasks for now, or we could filter by their projects
+                UserRole.TEAM_LEADER -> {
+                    // For now, if we don't have a direct "observeTasksByTeamLeader", 
+                    // we might need to observe all and filter, or observe by projects of their team.
+                    // But FirestoreDataSource has observeTasksByProject.
+                    // For simplicity in this sync, we can use observeTasks() if the volume is low, 
+                    // or implement more specific ones.
+                    firestoreDataSource.observeTasks()
+                }
+                UserRole.DEVELOPER -> firestoreDataSource.observeTasksByUser(userId)
+            }
+            val tasks = tasksFlow.first()
             taskDao.insertTasks(tasks.map { TaskEntity.fromDomain(it) })
         } catch (_: Exception) {}
     }

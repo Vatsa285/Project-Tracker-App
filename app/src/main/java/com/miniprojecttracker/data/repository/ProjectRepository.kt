@@ -5,6 +5,7 @@ import com.miniprojecttracker.data.local.dao.TaskDao
 import com.miniprojecttracker.data.local.entity.ProjectEntity
 import com.miniprojecttracker.data.remote.FirestoreDataSource
 import com.miniprojecttracker.domain.model.Project
+import com.miniprojecttracker.domain.model.UserRole
 import com.miniprojecttracker.domain.model.ProjectStatus
 import com.miniprojecttracker.domain.model.UpdateRequestStatus
 import kotlinx.coroutines.flow.Flow
@@ -78,9 +79,31 @@ class ProjectRepository @Inject constructor(
 
     suspend fun getProjectCountByStatus(status: String): Int = projectDao.getProjectCountByStatus(status)
 
-    suspend fun syncProjects() {
+    suspend fun syncProjects(userId: String, role: UserRole) {
         try {
-            val projects = firestoreDataSource.observeProjects().first()
+            val projects = when (role) {
+                UserRole.MANAGER -> {
+                    firestoreDataSource.observeProjects(userId).first()
+                }
+                UserRole.TEAM_LEADER -> {
+                    // Get ALL teams led by this user, then fetch projects for each
+                    val teams = firestoreDataSource.observeTeamsByLeader(userId).first()
+                    val allProjects = mutableListOf<Project>()
+                    for (team in teams) {
+                        val teamProjects = firestoreDataSource.observeProjectsByTeam(team.id).first()
+                        allProjects.addAll(teamProjects)
+                    }
+                    allProjects
+                }
+                UserRole.DEVELOPER -> {
+                    val user = firestoreDataSource.getUser(userId)
+                    if (user?.teamId?.isNotEmpty() == true) {
+                        firestoreDataSource.observeProjectsByTeam(user.teamId).first()
+                    } else {
+                        firestoreDataSource.observeProjects().first()
+                    }
+                }
+            }
             projectDao.insertProjects(projects.map { ProjectEntity.fromDomain(it) })
         } catch (_: Exception) {}
     }

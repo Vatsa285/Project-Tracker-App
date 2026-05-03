@@ -68,7 +68,7 @@ fun NavGraph(
         // === DASHBOARD ===
         composable(Screen.Dashboard.route) {
             DashboardScreen(
-                onNavigateToProjects = { filter, showFilters -> navController.navigate(Screen.ProjectList.createRoute(filter, showFilters)) },
+                onNavigateToProjects = { filter, showFilters, teamId -> navController.navigate(Screen.ProjectList.createRoute(filter, showFilters, teamId)) },
                 onNavigateToProject = { navController.navigate(Screen.ProjectDetail.createRoute(it)) },
                 onNavigateToTeams = { navController.navigate(Screen.TeamManagement.route) },
                 onNavigateToAnalytics = { navController.navigate(Screen.Analytics.route) },
@@ -87,14 +87,17 @@ fun NavGraph(
             route = Screen.ProjectList.route,
             arguments = listOf(
                 navArgument("filter") { type = NavType.StringType; defaultValue = "All" },
-                navArgument("showFilters") { type = NavType.BoolType; defaultValue = true }
+                navArgument("showFilters") { type = NavType.BoolType; defaultValue = true },
+                navArgument("teamId") { type = NavType.StringType; nullable = true; defaultValue = null }
             )
         ) { backStackEntry ->
             val filter = backStackEntry.arguments?.getString("filter") ?: "All"
             val showFilters = backStackEntry.arguments?.getBoolean("showFilters") ?: true
+            val teamId = backStackEntry.arguments?.getString("teamId")
             ProjectListScreen(
                 initialFilter = filter,
                 showFilters = showFilters,
+                teamId = teamId,
                 onNavigateToProject = { navController.navigate(Screen.ProjectDetail.createRoute(it)) },
                 onNavigateToCreateProject = { navController.navigate(Screen.CreateEditProject.createRoute()) },
                 onNavigateBack = { navController.popBackStack() }

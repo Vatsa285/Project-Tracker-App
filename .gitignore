@@ -1,7 +1,7 @@
 # Gradle files
 .gradle/
 build/
-/*/build/
+**/build/
 
 # IDE files
 .idea/
@@ -13,16 +13,25 @@ atlassian-ide-plugin.xml
 captures/
 .externalNativeBuild
 .cxx/
+output-metadata.json
 
 # Local configuration files
 local.properties
-google-services.json
 secrets.properties
+
+# Firebase / API keys
+google-services.json
+**/google-services.json
+firebase*.json
 
 # Keystore files
 *.jks
 *.keystore
 *.p12
+
+# Environment files
+.env
+.env.*
 
 # OS-specific files
 .DS_Store
@@ -35,3 +44,7 @@ Thumbs.db
 *.bak
 *.swp
 *~
+
+# APK / AAB build outputs
+*.apk
+*.aab
